@@ -57,6 +57,7 @@ if (NOT DISABLE_NVA)
 			nvaspyi2c
 			nvammiotracereplay
 			nvaforcetemp
+			nvactxswitchprofile
 		)
 
 		foreach(PROG ${NVA_PROGS})
@@ -94,6 +95,7 @@ if (NOT DISABLE_NVA)
 		endif(PC_PYTHON_FOUND AND CYTHON_EXECUTABLE)
 
 		target_link_libraries(nvawatch ${CMAKE_THREAD_LIBS_INIT})
+		target_link_libraries(nvactxswitchprofile ${CMAKE_THREAD_LIBS_INIT})
 		target_link_libraries(nvacounter rt)
 		install(TARGETS nva ${NVA_PROGS}
 			RUNTIME DESTINATION bin
