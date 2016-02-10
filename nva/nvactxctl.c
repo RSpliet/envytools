@@ -169,7 +169,7 @@ uint32_t ctxsize_strands(uint32_t reg_base)
 	return strand_size;
 }
 
-void print_header()
+void print_hwinfo()
 {
 	uint32_t dev, gpc_cnt, gpc_size, gpc_area, smx_cnt, ctx_size, i;
 
@@ -214,20 +214,23 @@ void print_header()
 	printf("Total context area : %d bytes\n", ctx_size);
 
 	printf("\n");
-
-	printf("time            : total, save (mmctx), load (mmctx)\n");
 }
 
 int main(int argc, char **argv) {
+	int profile = 0;
+
 	if (nva_init()) {
 		fprintf (stderr, "PCI init failure!\n");
 		return 1;
 	}
 	int c;
-	while ((c = getopt (argc, argv, "c:")) != -1)
+	while ((c = getopt (argc, argv, "c:p")) != -1)
 		switch (c) {
 			case 'c':
 				sscanf(optarg, "%d", &cnum);
+				break;
+			case 'p':
+				profile = 1;
 				break;
 		}
 	if (cnum >= nva_cardsnum) {
@@ -240,7 +243,12 @@ int main(int argc, char **argv) {
 
 	a = NVE0_HUB_SCRATCH_7;
 
-	print_header();
+	print_hwinfo();
+
+	if (profile != 1)
+		return 0;
+
+	printf("time            : total, save (mmctx), load (mmctx)\n");
 
 	pthread_t thr;
 	pthread_create(&thr, 0, t64watchfun, 0);
