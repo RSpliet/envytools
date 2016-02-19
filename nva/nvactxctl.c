@@ -37,6 +37,7 @@ static const int SZ = 1024 * 1024;
 
 uint32_t queue[1024 * 1024];
 uint64_t tqueue64[1024 * 1024];
+uint64_t poll_cnt_queue64[1024 * 1024];
 volatile int get = 0, put = 0;
 
 #define NV04_PTIMER_TIME_0                                 0x00009400
@@ -65,17 +66,21 @@ uint64_t get_time(unsigned int card)
 
 void *t64watchfun(void *x) {
 	uint32_t val = nva_rd32(cnum, a);
+	uint64_t poll_cnt = 0;
 	queue[put] = val;
 	tqueue64[put] = get_time(cnum);
+	poll_cnt_queue64[put] = poll_cnt;
 	put = (put + 1) % SZ;
 	while (1) {
 		uint32_t nval = nva_rd32(cnum, a);
+		poll_cnt++;
 		if ((nval) != (val)) {
 			queue[put] = nval;
 			tqueue64[put] = get_time(cnum);
+			poll_cnt_queue64[put] = poll_cnt;
 			put = (put + 1) % SZ;
+			val = nval;
 		}
-		val = nval;
 	}
 
 	return NULL;
@@ -97,7 +102,7 @@ void state_time(uint32_t val, uint32_t mask, uint64_t time,
 							(s).diff = 0ull; \
 						} while (0)
 
-void state(uint32_t val, uint64_t time)
+void state(uint32_t val, uint64_t time, uint64_t poll_cnt)
 {
 	static enum {
 		STATE_INV,
@@ -109,6 +114,7 @@ void state(uint32_t val, uint64_t time)
 	static struct nva_interval load = {0ull, 0ull};
 	static struct nva_interval save_mmctx = {0ull, 0ull};
 	static struct nva_interval load_mmctx = {0ull, 0ull};
+	static uint64_t poll_cnt_start = 0ull;
 
 	uint64_t diff;
 
@@ -123,6 +129,7 @@ void state(uint32_t val, uint64_t time)
 			break;
 
 		auto_start = time;
+		poll_cnt_start = poll_cnt;
 		state = STATE_RUN;
 		/* no break */
 	case STATE_RUN:
@@ -135,9 +142,9 @@ void state(uint32_t val, uint64_t time)
 			/* print results */
 			diff = time - auto_start;
 			printf("%016"PRIu64": %"PRIu64",%"PRIu64"(%"PRIu64"),%"PRIu64
-					"(%"PRIu64")\n",
+					"(%"PRIu64") # %"PRIu64" samples\n",
 					time, diff, save.diff, save_mmctx.diff, load.diff,
-					load_mmctx.diff);
+					load_mmctx.diff, poll_cnt - poll_cnt_start);
 
 			auto_start = 0ull;
 			RESET_INTV(save);
@@ -257,7 +264,7 @@ int main(int argc, char **argv) {
 		while (get == put)
 			sched_yield();
 
-		state(queue[get],tqueue64[get]);
+		state(queue[get],tqueue64[get], poll_cnt_queue64[get]);
 
 		get = (get + 1) % SZ;
 	}
