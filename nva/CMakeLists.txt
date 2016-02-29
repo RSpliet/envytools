@@ -58,6 +58,7 @@ if (NOT DISABLE_NVA)
 			nvammiotracereplay
 			nvaforcetemp
 			nvactxctl
+			nvactxtime
 		)
 
 		foreach(PROG ${NVA_PROGS})
@@ -95,6 +96,9 @@ if (NOT DISABLE_NVA)
 		endif(PC_PYTHON_FOUND AND CYTHON_EXECUTABLE)
 
 		target_link_libraries(nvawatch ${CMAKE_THREAD_LIBS_INIT})
+		target_link_libraries(nvactxctl ${CMAKE_THREAD_LIBS_INIT})
+		target_link_libraries(nvactxtime ${CMAKE_THREAD_LIBS_INIT})
+		
 		target_link_libraries(nvactxctl ${CMAKE_THREAD_LIBS_INIT})
 		target_link_libraries(nvacounter rt)
 		install(TARGETS nva ${NVA_PROGS}
