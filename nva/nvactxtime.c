@@ -31,6 +31,7 @@
 
 int cnum = 0;
 int32_t a;
+uint64_t samples = 0;
 
 static const int SZ = 1024 * 1024;
 
@@ -54,18 +55,39 @@ void *watchfun(void *x) {
 	return NULL;
 }
 
+void usage(char *program)
+{
+	printf("%s - Sample hub scratchpad register 6\n", program);
+	printf("\t-c [cardno] \tSelect specific graphics card\n");
+	printf("\t-s [samples] \tStop after number of samples\n");
+}
+
 int main(int argc, char **argv) {
+	int c;
+	uint64_t sample = 0;
+
+	while ((c = getopt (argc, argv, "c:s:")) != -1)
+		switch (c) {
+		case 'c':
+			sscanf(optarg, "%d", &cnum);
+			break;
+		case 's':
+			sscanf(optarg, "%"SCNu64, &samples);
+				if(samples != 0)
+					break;
+			printf("Error: invalid number of samples requested\n\n");
+			/* no break */
+		default:
+			usage(argv[0]);
+			return 0;
+			break;
+		}
+
 	if (nva_init()) {
 		fprintf (stderr, "PCI init failure!\n");
 		return 1;
 	}
-	int c;
-	while ((c = getopt (argc, argv, "c:")) != -1)
-		switch (c) {
-			case 'c':
-				sscanf(optarg, "%d", &cnum);
-				break;
-		}
+
 	if (cnum >= nva_cardsnum) {
 		if (nva_cardsnum)
 			fprintf (stderr, "No such card.\n");
@@ -85,5 +107,10 @@ int main(int argc, char **argv) {
 
 		printf("%d\n", queue[get]);
 		get = (get + 1) % SZ;
+		sample++;
+		if (samples && sample == samples)
+			break;
 	}
+
+	return 0;
 }
