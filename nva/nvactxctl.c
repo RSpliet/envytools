@@ -39,6 +39,7 @@ uint32_t queue[1024 * 1024];
 uint64_t tqueue64[1024 * 1024];
 uint64_t poll_cnt_queue64[1024 * 1024];
 volatile int get = 0, put = 0;
+uint32_t dev;
 
 #define NV04_PTIMER_TIME_0                                 0x00009400
 #define NV04_PTIMER_TIME_1                                 0x00009410
@@ -163,26 +164,24 @@ void state(uint32_t val, uint64_t time, uint64_t poll_cnt)
 uint32_t ctxsize_strands(uint32_t reg_base)
 {
 	uint32_t strand_count, strand_size = 0, io_idx, i;
+	uint32_t host_io_port_off = dev > 0x100 ? 0x20ac : 0x2ffc;
 
 	strand_count = nva_rd32(cnum, reg_base + 0x2880);
-	io_idx = nva_rd32(cnum, reg_base + 0x2ffc);
+	io_idx = nva_rd32(cnum, reg_base + host_io_port_off);
 
 	for (i = 0; i < strand_count; i++) {
-		nva_wr32(cnum, reg_base + 0x2ffc, i);
+		nva_wr32(cnum, reg_base + host_io_port_off, i);
 		strand_size += (nva_rd32(cnum, reg_base + 0x2910) << 2);
 	}
-	nva_wr32(cnum, reg_base + 0x2ffc, io_idx);
+	nva_wr32(cnum, reg_base + host_io_port_off, io_idx);
 
 	return strand_size;
 }
 
 void print_hwinfo()
 {
-	uint32_t dev, gpc_cnt, gpc_size, gpc_area, smx_cnt, ctx_size, i;
+	uint32_t gpc_cnt, gpc_size, gpc_area, smx_cnt, ctx_size, i;
 
-	dev = nva_rd32(cnum, 0x000000);
-	dev &= 0x1ff00000;
-	dev >>= 20;
 	printf("Card: NV%X\n", dev);
 
 	smx_cnt = (nva_rd32(cnum, 0x418bb8) >> 8) & 0xff;
@@ -195,6 +194,7 @@ void print_hwinfo()
 	gpc_area = 0;
 	for (i = 0; i < gpc_cnt; i++) {
 		ctx_size = nva_rd32(cnum, 0x50274c + (i * 0x8000)) << 2;
+		printf("  GPC[%2u] base size: %d bytes\n", i, ctx_size);
 		ctx_size += ctxsize_strands(0x500000 + (i * 0x8000));
 		printf("  GPC[%2u] ctx size : %d bytes\n", i, ctx_size);
 		gpc_size += ctx_size;
@@ -249,6 +249,9 @@ int main(int argc, char **argv) {
 	}
 
 	a = NVE0_HUB_SCRATCH_7;
+	dev = nva_rd32(cnum, 0x000000);
+	dev &= 0x1ff00000;
+	dev >>= 20;
 
 	print_hwinfo();
 
